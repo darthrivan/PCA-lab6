@@ -72,3 +72,26 @@ Con -O3, el compilador hace vectorización y eso aumenta el rendimiento aunque l
 
 En ambos casos los tiempos son iguales
 
+3.
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  Ts/call  Ts/call  name    
+ 42.39      0.20     0.20                             transpose (transposition.c:9 @ 8048be9)
+ 21.74      0.30     0.10                             main (transposition.c:29 @ 8048cc2)
+  8.70      0.34     0.04                             transpose (transposition.c:8 @ 8048c21)
+  4.35      0.36     0.02                             __random_r (random_r.c:409 @ 8049b91)
+  4.35      0.38     0.02                             random_r (random_r.c:364 @ 8049b40)
+  2.17      0.39     0.01                             __random (random.c:296 @ 8049963)
+  2.17      0.40     0.01                             __random (random.c:300 @ 8049996)
+  2.17      0.41     0.01                             __random_r (random_r.c:367 @ 8049b5c)
+  2.17      0.42     0.01                             __random_r (random_r.c:390 @ 8049b86)
+  2.17      0.43     0.01                             __random_r (random_r.c:370 @ 8049b88)
+  2.17      0.44     0.01                             random (random.c:293 @ 8049960)
+  2.17      0.45     0.01                             setstate (random.c:276 @ 8049956)
+  1.09      0.45     0.01                             __random_r (random_r.c:389 @ 8049b7d)
+  1.09      0.46     0.01                             __random_r (random_r.c:388 @ 8049b80)
+  1.09      0.46     0.01                             transpose (transposition.c:8 @ 8048be0)
+  0.00      0.46     0.00        1     0.00     0.00  main (transposition.c:14 @ 8048c3b)
+  0.00      0.46     0.00        1     0.00     0.00  transpose (transposition.c:5 @ 8048bcc)
+
