@@ -1,0 +1,10 @@
+increase_brightness/*
+!increase_brightness/increase_brightness.c
+rgb2yuv/*
+!rgb2yuv/rgb2yuv.c
+swap/*
+!swap/swap.c
+transpose/*
+!transpose/rgb2yuv.c
+vector_add/*
+!vector_add/vector_add.c
