@@ -2,11 +2,17 @@
 #include <stdlib.h>
 #include <time.h>
 
+#define BLOCK_SIZE 250
+
 void transpose(float *dst, float *src, int dim) {
     int i, j, ii, jj;
-    for (i = 0; i < dim; i ++) {
-        for(j = 0; j < dim; j ++) {
-           dst[j * dim + i] = src[i * dim + j];
+    for (i = 0; i < dim; i += BLOCK_SIZE) {
+        for(j = 0; j < dim; j += BLOCK_SIZE) {
+            for (ii = i; ii < i+BLOCK_SIZE; ++ii) {
+                for (jj = j; jj < j+BLOCK_SIZE; ++jj) {
+                    dst[jj * dim + ii] = src[ii * dim + jj];
+                }
+            }
         }
     }
 }
