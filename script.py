@@ -272,12 +272,12 @@ class Plotter(object):
 
 class Tester(object):
 	"""docstring for Tester"""
-	def __init__(self, original_program, binary=False, input=sys.stdin):
+	def __init__(self, original_program, binary=False, input_stream=sys.stdin):
 		super(Tester, self).__init__()
 		self.original_program = original_program
 		self.binary = binary
+		self.input_stream = input_stream
 		self._generate_output()
-		self.input = input
 
 	def _generate_output(self):
 		Debugger.log('Generating test output...')
@@ -285,7 +285,7 @@ class Tester(object):
 		try:
 			cmd = run([self.original_program.get_exec_path()]+
 					   self.original_program.get_arguments(),
-					   stdout=output_file, stdin=self.input)
+					   stdout=output_file, stdin=self.input_stream)
 		except CalledProcessError:
 			Debugger.error('Failed to generate output for ' +
 				self.original_program.get_exec_name())
@@ -298,7 +298,7 @@ class Tester(object):
 		try:
 			cmd = run([program.get_exec_path()]+
 					   program.get_arguments(),
-					   stdout=output_file, stdin=self.input)
+					   stdout=output_file, stdin=self.input_stream)
 		except CalledProcessError:
 			Debugger.error('Failed to generate output for ' +
 				program.get_exec_name())
@@ -343,7 +343,7 @@ if __name__ == "__main__":
 	COMPILATION_FLAGS = ['-O3','-march=native']
 	BINARY_OUTPUT = False
 	PROGRAM_ARGUMENTS = ['5000']
-	INPUT_FILE = None
+	INPUT_FILE = '../respuestas.txt'
 	EXT = 'png'
 
 	def acc(commit, code, test=None):
@@ -375,8 +375,8 @@ if __name__ == "__main__":
 		program.set_arguments(PROGRAM_ARGUMENTS)
 		if INPUT_FILE is None:
 			tester   = Tester(program, binary=BINARY_OUTPUT)
-		else
-			tester   = Tester(program, binary=BINARY_OUTPUT, input=INPUT_FILE)
+		else:
+			tester   = Tester(program, binary=BINARY_OUTPUT, input_stream=open(INPUT_FILE, 'r'))
 		fun = tester.test
 	elapseds = [(commit, acc(commit, code, fun)) for (commit, code) in versions]
 	plotter  = Plotter()
