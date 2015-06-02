@@ -1,44 +1,43 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
+#include "xmmintrin.h"
 
-#define BLOCK_SIZE 250
+#define BLOCK_SIZE 4
+
+#define TRANSPOSE_BLOCK(I,J,DIM,SRC,DST)       \
+        a = _mm_load_ps(&SRC[I*DIM + J]);     \
+        b = _mm_load_ps(&SRC[(I+1)*DIM + J]); \
+        c = _mm_load_ps(&SRC[(I+2)*DIM + J]); \
+        d = _mm_load_ps(&SRC[(I+3)*DIM + J]); \
+        _MM_TRANSPOSE4_PS(a, b, c, d);         \
+        _mm_store_ps(&DST[I*DIM + J], a);     \
+        _mm_store_ps(&DST[(I+1)*DIM + J], b); \
+        _mm_store_ps(&DST[(I+2)*DIM + J], c); \
+        _mm_store_ps(&DST[(I+3)*DIM + J], d);
+
+#define MOVE_BLOCK(I,J,DIM,SRC,DST)            \
+        a = _mm_load_ps(&SRC[I*DIM + J]);     \
+        b = _mm_load_ps(&SRC[(I+1)*DIM + J]); \
+        c = _mm_load_ps(&SRC[(I+2)*DIM + J]); \
+        d = _mm_load_ps(&SRC[(I+3)*DIM + J]); \
+        _mm_store_ps(&DST[I*DIM + J], a);     \
+        _mm_store_ps(&DST[(I+1)*DIM + J], b); \
+        _mm_store_ps(&DST[(I+2)*DIM + J], c); \
+        _mm_store_ps(&DST[(I+3)*DIM + J], d);
 
 void transpose(float *dst, float *src, int dim) {
     int i, j, ii, jj;
     float aux;
+    __m128 a, b, c, d;
     for (i = 0; i < dim; i += BLOCK_SIZE) {
         // Transposicion de la diagonal
-        for (ii = i; ii < i+BLOCK_SIZE; ++ii) {
-            for (jj = i; jj < i+BLOCK_SIZE; ++jj) {
-                dst[jj * dim + ii] = src[ii * dim + jj];
-            }
-        }
+        TRANSPOSE_BLOCK(i,i,dim,src,dst)
         for(j = i+BLOCK_SIZE; j < dim; j += BLOCK_SIZE) {
             // Transposicion de no diagonal
-            for (ii = i; ii < i+BLOCK_SIZE; ++ii) {
-                for (jj = ii+1; jj < j+BLOCK_SIZE; ++jj) {
-                    // TODO arreglar accesos
-                    aux = src[ii * dim + jj];
-                    // src[ii * dim + jj] = src[jj * dim + ii];
-                    src[ii * dim + jj] = src[(ii+jj-j) * dim + (ii-i)];
-                    src[jj * dim + ii] = aux;
-                }
-            }
-            for (ii = j; ii < j+BLOCK_SIZE; ++ii) {
-                for (jj = ii+1; jj < i+BLOCK_SIZE; ++jj) {
-                    aux = src[ii * dim + jj];
-                    // src[ii * dim + jj] = src[jj * dim + ii];
-                    src[ii * dim + jj] = src[(ii+jj-j) * dim + (ii-i)];
-                    src[jj * dim + ii] = aux;
-                }
-            }
-            for (ii = i; ii < i+BLOCK_SIZE; ++ii) {
-                for (jj = j; jj < j+BLOCK_SIZE; ++jj) {
-                    dst[jj * dim + ii] = src[ii * dim + jj];
-                    dst[ii * dim + jj] = src[jj * dim + ii];
-                }
-            }
+            TRANSPOSE_BLOCK(i,j,dim,src,dst)
+            TRANSPOSE_BLOCK(j,i,dim,src,dst)
         }
     }
 }
@@ -53,8 +52,8 @@ int main(int argc, char *argv[]) {
     
     int dim = atoi(argv[1]);
 
-    float *src = malloc(dim*dim*sizeof(float));
-    float *dst = malloc(dim*dim*sizeof(float));
+    float *src = 16 + ((float *) ((uintptr_t) malloc(dim*dim*sizeof(float)+16) & ~15));
+    float *dst = 16 + ((float *) ((uintptr_t) malloc(dim*dim*sizeof(float)+16) & ~15));
 
     srand(0);
     for (i = 0; i < dim*dim; ++i)

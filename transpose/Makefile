@@ -1,5 +1,5 @@
 PROGS= transposition
-CFLAGS=
+CFLAGS=-O3 -march=native
 
 include ../Makefile
 
