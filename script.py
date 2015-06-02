@@ -204,6 +204,7 @@ class Accounter_B(object):
 					        '-f', '%U,%S,%e,%P,%I,%O,%F,%R,%W',
 					        self.program.get_exec_path()
 					       ] + self.program.get_arguments(),
+					       stdin=self.program.get_input_stream(),
 					       stdout=self.program.get_output_stream(),
 					       stderr=PIPE)
 				self._add_measure(self._parse(cmd.stderr.read()))
@@ -371,24 +372,48 @@ if __name__ == "__main__":
 	args = vars(argument_parser.parse_args(sys.argv[1:]))
 
 	# PARAMETERS
-	COMPILATION_FLAGS = []
+	COMPILATION_FLAGS = ['-O3', '-march=native']
 	BINARY_OUTPUT = True
 	PROGRAM_ARGUMENTS = ['5000']
+	INPUT_FILE = 'Makefile'
+	# INPUT_FILE = None
 	EXT = 'png'
 
 	def acc(commit, code, test=None):
 		compiler  = Compiler(code, flags=COMPILATION_FLAGS, from_stdin=True)
 		program   = compiler.compile('tmp_'+commit[:5])
 		program.set_arguments(PROGRAM_ARGUMENTS)
-		program.set_output_stream(DEVNULL)
 		if test is not None:
 			try:
 				test(program)
 			except CalledProcessError:
 				Debugger.error('Commit %s not producing same output' % commit)
+		program.set_output_stream(DEVNULL)
 		accounter = Accounter_B(program, 5)
 		accounter.account()
 		measures  = accounter.get_measures('Elapsed')
+		return sum([a['Elapsed'] for a in measures]) / len(measures)
+
+	def acc_with_input(commit, code, test=None):
+		compiler  = Compiler(code, flags=COMPILATION_FLAGS, from_stdin=True)
+		program   = compiler.compile('tmp_'+commit[:5])
+		program.set_arguments(PROGRAM_ARGUMENTS)
+		input_file = open(INPUT_FILE, 'rb')
+		program.set_input_stream(input_file)
+		if test is not None:
+			try:
+				test(program)
+			except CalledProcessError:
+				Debugger.error('Commit %s not producing same output' % commit)
+		program.set_output_stream(DEVNULL)
+		input_file.seek(0)
+		# input_file.close()
+		# input_file = open(INPUT_FILE, 'rb')
+		program.set_input_stream(input_file)
+		accounter = Accounter_B(program, 5)
+		accounter.account()
+		measures  = accounter.get_measures('Elapsed')
+		input_file.close()
 		return sum([a['Elapsed'] for a in measures]) / len(measures)
 
 	from os import devnull
@@ -404,9 +429,10 @@ if __name__ == "__main__":
 		compiler = Compiler(versions[0][1], flags=COMPILATION_FLAGS, from_stdin=True)
 		program  = compiler.compile('tmp_test')
 		program.set_arguments(PROGRAM_ARGUMENTS)
-		tester   = Tester(program, binary=BINARY_OUTPUT)
+		tester   = Tester(program, binary=BINARY_OUTPUT, input_file=INPUT_FILE)
 		fun = tester.test
-	elapseds = [(commit, acc(commit, code, fun)) for (commit, code) in versions]
+	account = acc if INPUT_FILE is None else acc_with_input
+	elapseds = [(commit, account(commit, code, fun)) for (commit, code) in versions]
 	plotter  = Plotter()
 	plotter.plot(elapseds, save='elapseds.'+EXT, xlabel='commit', ylabel='Elapsed Time')
 	plotter.close()
