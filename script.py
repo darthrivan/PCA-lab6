@@ -52,11 +52,14 @@ class Debugger(object):
 
 class Program(object):
 	"""docstring for Program"""
-	def __init__(self, exec_name, path=getcwd(), args=[]):
+	def __init__(self, exec_name, path=getcwd(), args=[], input_stream=sys.stdin,
+		         output_stream=sys.stdout):
 		super(Program, self).__init__()
 		self.exec_name = exec_name
 		self.path = path
 		self.args = args
+		self.input_stream = input_stream
+		self.output_stream = output_stream
 
 	def get_exec_path(self):
 		return self.path+'/'+self.exec_name
@@ -70,6 +73,12 @@ class Program(object):
 	def get_argument(self, pos):
 		return self.args[pos]
 
+	def get_input_stream(self):
+		return self.input_stream
+
+	def get_output_stream(self):
+		return self.output_stream
+
 	def set_argument(self, arg, pos=None):
 		if pos is None:
 			self.args.add(arg)
@@ -78,6 +87,18 @@ class Program(object):
 
 	def set_arguments(self, args):
 		self.args = args
+
+	def set_input_stream(self, input_stream):
+		self.input_stream = input_stream
+
+	def set_output_stream(self, output_stream):
+		self.output_stream = output_stream
+
+	def run(self):
+		run([self.get_exec_path()]+
+			 self.get_arguments(),
+			 stdin=self.input_stream,
+			 stdout=self.output_stream)
 		
 class Compiler(object):
 	"""docstring for Compiler"""
@@ -174,7 +195,7 @@ class Accounter_B(object):
 		self.num_samples = num_samples
 		self.measures = []
 
-	def account(self, stdout_redirect=None):
+	def account(self):
 		Debugger.log("Initiating accounting...")
 		for i in range(0, self.num_samples):
 			try:
@@ -183,7 +204,7 @@ class Accounter_B(object):
 					        '-f', '%U,%S,%e,%P,%I,%O,%F,%R,%W',
 					        self.program.get_exec_path()
 					       ] + self.program.get_arguments(),
-					       stdout=stdout_redirect,
+					       stdout=self.program.get_output_stream(),
 					       stderr=PIPE)
 				self._add_measure(self._parse(cmd.stderr.read()))
 			except CalledProcessError as err:
@@ -272,36 +293,46 @@ class Plotter(object):
 
 class Tester(object):
 	"""docstring for Tester"""
-	def __init__(self, original_program, binary=False, input_stream=sys.stdin):
+	def __init__(self, original_program, binary=False, input_file=None):
 		super(Tester, self).__init__()
 		self.original_program = original_program
 		self.binary = binary
-		self.input_stream = input_stream
+		self.input_file = input_file
 		self._generate_output()
 
 	def _generate_output(self):
 		Debugger.log('Generating test output...')
 		output_file = open('/tmp/output_original.out', 'wb' if self.binary else 'w')
+		input_file = None
+		self.original_program.set_output_stream(output_file)
+		if self.input_file:
+			input_file = open(self.input_file, 'rb' if self.binary else 'r')
+			self.original_program.set_input_stream(input_file)
 		try:
-			cmd = run([self.original_program.get_exec_path()]+
-					   self.original_program.get_arguments(),
-					   stdout=output_file, stdin=self.input_stream)
+			self.original_program.run();
 		except CalledProcessError:
 			Debugger.error('Failed to generate output for ' +
 				self.original_program.get_exec_name())
+		if self.input_file:
+			input_file.close()
 		output_file.close()
 		Debugger.success()
 
 	def test(self, program):
 		Debugger.log('Testing %s...' % program.get_exec_name())
 		output_file = open('/tmp/output_tested.out', 'wb' if self.binary else 'w')
+		input_file = None
+		program.set_output_stream(output_file)
+		if self.input_file:
+			input_file = open(self.input_file, 'rb' if self.binary else 'r')
+			program.set_input_stream(input_file)
 		try:
-			cmd = run([program.get_exec_path()]+
-					   program.get_arguments(),
-					   stdout=output_file, stdin=self.input_stream)
+			program.run();
 		except CalledProcessError:
 			Debugger.error('Failed to generate output for ' +
 				program.get_exec_name())
+		if self.input_file:
+			input_file.close()
 		output_file.close()
 		if self.binary:
 			run(['cmp', '-s', '/tmp/output_original.out', '/tmp/output_tested.out'])
@@ -340,23 +371,23 @@ if __name__ == "__main__":
 	args = vars(argument_parser.parse_args(sys.argv[1:]))
 
 	# PARAMETERS
-	COMPILATION_FLAGS = ['-O3','-march=native']
-	BINARY_OUTPUT = False
+	COMPILATION_FLAGS = []
+	BINARY_OUTPUT = True
 	PROGRAM_ARGUMENTS = ['5000']
-	INPUT_FILE = '../respuestas.txt'
 	EXT = 'png'
 
 	def acc(commit, code, test=None):
 		compiler  = Compiler(code, flags=COMPILATION_FLAGS, from_stdin=True)
 		program   = compiler.compile('tmp_'+commit[:5])
 		program.set_arguments(PROGRAM_ARGUMENTS)
+		program.set_output_stream(DEVNULL)
 		if test is not None:
 			try:
 				test(program)
 			except CalledProcessError:
 				Debugger.error('Commit %s not producing same output' % commit)
 		accounter = Accounter_B(program, 5)
-		accounter.account(DEVNULL)
+		accounter.account()
 		measures  = accounter.get_measures('Elapsed')
 		return sum([a['Elapsed'] for a in measures]) / len(measures)
 
@@ -373,10 +404,7 @@ if __name__ == "__main__":
 		compiler = Compiler(versions[0][1], flags=COMPILATION_FLAGS, from_stdin=True)
 		program  = compiler.compile('tmp_test')
 		program.set_arguments(PROGRAM_ARGUMENTS)
-		if INPUT_FILE is None:
-			tester   = Tester(program, binary=BINARY_OUTPUT)
-		else:
-			tester   = Tester(program, binary=BINARY_OUTPUT, input_stream=open(INPUT_FILE, 'r'))
+		tester   = Tester(program, binary=BINARY_OUTPUT)
 		fun = tester.test
 	elapseds = [(commit, acc(commit, code, fun)) for (commit, code) in versions]
 	plotter  = Plotter()
