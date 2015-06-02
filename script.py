@@ -361,22 +361,25 @@ if __name__ == "__main__":
 	# accounter.plot()
 	import argparse
 	argument_parser = argparse.ArgumentParser(prog=__file__,
-		description="Script to load other versions of a given file and "
+		description="Script to load other versions of a given program and "
 					"account all of them")
 	argument_parser.add_argument('-f', '--file',
-		help='File to compare', required=True)
-	argument_parser.add_argument('-t', '--testing', action='store_true',
-		help='Enable output checking')
+		help='Program to compare', required=True)
+	argument_parser.add_argument('-i', '--input',
+		help='Input file to program', required=False)
 	argument_parser.add_argument('-u', '--uncommitted', metavar='FILE',
-		help='Add uncommitted files', nargs='+', default=[])
+		help='Add uncommitted programs', nargs='+', default=[])
+	argument_parser.add_argument('-t', '--testing', action='store_true',
+		help='Enable output testing')
 	args = vars(argument_parser.parse_args(sys.argv[1:]))
 
 	# PARAMETERS
 	COMPILATION_FLAGS = ['-O3', '-march=native']
 	BINARY_OUTPUT = True
 	PROGRAM_ARGUMENTS = ['5000']
-	INPUT_FILE = 'Makefile'
+	# INPUT_FILE = 'Makefile'
 	# INPUT_FILE = None
+	INPUT_FILE = args.get('input')
 	EXT = 'png'
 
 	def acc(commit, code, test=None):
